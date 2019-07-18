@@ -20,34 +20,38 @@ public class Container1<T> {
 
     public void put(T t) {
         lock.lock();
-        //不能用if，防止容器内数据超过max
-        while (linkedList.size() == MAX) {
-            try {
+        try {
+            //不能用if，防止容器内数据超过max
+            while (linkedList.size() == MAX) {
                 producer.await();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
-        }
 
-        linkedList.add(t);
-        ++count;
-        consumer.signalAll();
+            linkedList.add(t);
+            ++count;
+            consumer.signalAll();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            lock.unlock();
+        }
     }
 
     public T get() {
         T t = null;
         lock.lock();
-        while (linkedList.size() == 0) {
-            try {
+        try {
+            while (linkedList.size() == 0) {
                 consumer.await();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
-        }
 
-        t = linkedList.removeFirst();
-        --count;
-        producer.signalAll();
+            t = linkedList.removeFirst();
+            --count;
+            producer.signalAll();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            lock.unlock();
+        }
         return t;
     }
 
@@ -55,7 +59,7 @@ public class Container1<T> {
         Container1<String> container = new Container1<>();
 
         for (int i = 0; i < 10; i++) {
-            new Thread(()->{
+            new Thread(() -> {
                 for (int j = 0; j < 5; j++) {
                     System.out.println(container.get());
                 }
@@ -69,9 +73,9 @@ public class Container1<T> {
         }
 
         for (int i = 0; i < 2; i++) {
-            new Thread(()->{
+            new Thread(() -> {
                 for (int j = 0; j < 20; j++) {
-                    container.put(Thread.currentThread().getName()+ " " + j);
+                    container.put(Thread.currentThread().getName() + " " + j);
                 }
             }, "p" + i).start();
         }
